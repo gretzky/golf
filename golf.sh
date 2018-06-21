@@ -1,4 +1,8 @@
 #!/bin/sh
+# golf.sh: a faster way to init a project
+# https://github.com/gretzky/golf
+
+VERSION=1.0.0
 
 # set vars
 t=$(mktemp -t golftemp) || exit
@@ -8,8 +12,8 @@ trap "exit 127" HUP STOP TERM
 ##############
 # welcome msg
 ##############
-dialog --title "welcome to golf ⛳️" \
-       --msgbox "\ngolf is a fast(er) way to init a project\n" 10 50
+dialog --title "welcome to golf" \
+       --msgbox "\ngolf is a faster way to init a project\n" 10 50
 
 ##############
 # proj details
@@ -17,7 +21,7 @@ dialog --title "welcome to golf ⛳️" \
 it=$(mktemp -t golftemp.project) || exit
 dialog --title "project details" \
        --inputbox \
-       "enter a name for your project:" 10 50 2>"$it"
+       "\nenter a name for your project:" 10 50 2>"$it"
 
 retval=$?
 proj=$(cat "$it")
@@ -29,6 +33,21 @@ case $retval in
         ;;
 esac
 
+########
+# readme
+########
+generate_readme() {
+    URL="https://gist.githubusercontent.com/gretzky/19f241a2db9f119853019a40be8d0242/raw/702ce9ec40a51cbf3563047f6ea593a2ff637c4b/readme.md"
+    curl "$URL" -o $proj/README.md >/dev/null 2>&1
+    sleep 1
+    echo "# $proj\n" | cat - $proj/README.md | sponge $proj/README.md
+}
+
+generate_readme
+
+dialog --title "README.md" \
+       --msgbox "generated a basic README in $proj" 10 50
+
 ###########
 # gitignore
 ###########
@@ -38,7 +57,7 @@ ide=""
 other=""
 exec 3>&1
 dialog --title ".gitignore" \
-        --form "Add gitignore entries" \
+        --form "\nAdd gitignore entries" \
 15 50 0 \
         "OS:" 1 1 "$os"         1 10 40 0 \
         "Language:"    2 1 "$lang"        2 10 40 0 \
@@ -53,7 +72,7 @@ dialog --title ".gitignore" \
     combined="$(echo ${os},${lang},${ide},${other})"
     output="$(echo "${combined}" | tr -d '[:space:]')"
 
-    curl -L -s https://www.gitignore.io/api/$output >> $proj/.gitignore
+    curl -L -s "https://www.gitignore.io/api/$output" >> $proj/.gitignore
 }
 exec 3>&-
 
@@ -75,17 +94,17 @@ trim_trailing_whitespace = true
 trim_trailing_whitespace = false
 EOM
 
-language_specific_editorconfig() {
+run_config() {
     lang=""
     style=""
     size=""
     exec 3>&1
     dialog --title ".editorconfig" \
-            --form "Configure language-specific settings" \
-    16 46 16 \
-            "File extension:" 1 1 "$lang"         1 16 80 0 \
-            "Indent style:"    2 1 "$style"        2 16 80 0 \
-            "Indent size:"    3 1 "$size"       3 16 80 0 \
+            --form "\nconfigure language-specfic settings:\n" \
+    16 80 0 \
+            "file extension:" 1 1 "$lang" 1 16 80 0 \
+             "indent style:" 2 1 "$style" 2 16 80 0 \
+            "indent size:" 3 1 "$size" 3 16 80 0 \
     2>&1 1>&3 | {
         read -r lang
         read -r style
@@ -94,12 +113,15 @@ language_specific_editorconfig() {
         echo "\n[*.$lang]\nindent_style = ${style}\nindent_size = ${size}" >> $proj/.editorconfig
     }
     exec 3>&-
+}
 
-    dialog --title "editorconfig" \
-       --yesno "do you need to configure any other language-specific editorconfig settings?" 10 50
-
+language_specific_editorconfig() {
+    run_config
+    dialog --title ".editorconfig" \
+            --yesno "\ndo you need to configure any other language-specific settings?" 10 50
+    
     case $? in
-        0 ) language_specific_editorconfig
+        0 ) run_config
             ;;
         1 ) :
             ;;
@@ -107,7 +129,7 @@ language_specific_editorconfig() {
 }
 
 dialog --title "editorconfig" \
-       --yesno "do you need to configure language-specific editorconfig settings?" 10 50
+       --yesno "\ndo you need to configure language-specific editorconfig settings?" 10 50
 
 case $? in
     0 ) language_specific_editorconfig
@@ -122,9 +144,14 @@ esac
 get_license() {
     if ! jq_loc="$(type -p "jq")" || [[ -z $jq_loc ]];
     then
-        dialog --msgbox "You need jq to do this.\nDid you read the README fool?" 10 50
+        dialog --msgbox "\nyou need jq to do this.\ndid you read the README fool?" 10 50
     fi
     curl -s "https://api.github.com/licenses/$1" | jq -r '.body' >> $proj/LICENSE
+
+    echo "## License\n" >> $proj/README.md
+    echo "This project is licensed under the $1 license - see the [LICENSE](./LICENSE) for more details.\n" >> $proj/README.md
+    echo "## Shoutouts\n" >> $proj/README.md
+    echo "* props to ppl or code\n" >> $proj/README.md
 }
 
 cmd=(dialog --separate-output --checklist "Select a license:" 16 46 16)
@@ -177,16 +204,6 @@ get_bug_report_template() {
     curl "$URL" -o $proj/.github/BUG_REPORT.md >/dev/null 2>&1
 }
 
-dialog --title "bug report template" \
-       --yesno "do you want a bug report template?" 10 50
-
-case $? in
-    0 ) get_bug_report_template
-        ;;
-    1 ) :
-        ;;
-esac
-
 get_feature_request_template() {
     if [ ! -d $proj/.github ];
     then
@@ -196,16 +213,6 @@ get_feature_request_template() {
     URL="https://gist.githubusercontent.com/gretzky/06fbb260bdbba18fd5d506b74e6e5bd9/raw/64b8bdf24fdb8b85d302f158b143b27b9466b466/feature_request.md"
     curl "$URL" -o $proj/.github/FEATURE_REQUEST.md >/dev/null 2>&1
 }
-
-dialog --title "feature request template" \
-       --yesno "do you want a feature request template?" 10 50
-
-case $? in
-    0 ) get_feature_request_template
-        ;;
-    1 ) :
-        ;;
-esac
 
 get_pull_request_template() {
     if [ ! -d $proj/.github ];
@@ -217,55 +224,50 @@ get_pull_request_template() {
     curl "$URL" -o $proj/.github/PULL_REQUEST_TEMPLATE.md >/dev/null 2>&1
 }
 
-dialog --title "pull request template" \
-       --yesno "do you want a pull request template?" 10 50
+generate_gh_templates() {
+    dialog --title "bug report template" \
+           --yesno "do you want a bug report template?" 10 50
 
-case $? in
-    0 ) get_pull_request_template
-        ;;
-    1 ) :
-        ;;
-esac
+    case $? in
+        0 ) get_bug_report_template
+            ;;
+        1 ) :
+            ;;
+    esac
 
-##########
-# git repo
-##########
-dialog --title "git" \
-       --yesno "do you want to initialize a git repository?\nthis will init git, create a remote repo, and push an initial commit." 10 50
+    dialog --title "feature request template" \
+           --yesno "do you want a feature request template?" 10 50
 
-case $? in
-    0 ) cp -r ./bin/git $proj/.git
-        ;;
-    1 ) :
-        ;;
-esac
+    case $? in
+        0 ) get_feature_request_template
+            ;;
+        1 ) :
+            ;;
+    esac
 
-gr=$(mktemp -t golftemp.project) || exit
-user=$(git config --global user.name)
-dialog --title "git repo" \
-       --inputbox \
-       "enter a name for your git repo:" 10 50 2>"$gr"
+    dialog --title "pull request template" \
+           --yesno "do you want a pull request template?" 10 50
 
-retval=$?
-repo_name=$(cat "$gr")
+    case $? in
+        0 ) get_pull_request_template
+            ;;
+        1 ) :
+            ;;
+    esac
+}
 
-case $retval in
-    0 ) curl -u "'$user'" https://api.github.com/user/repos -d "{\"name\":\"$repo_name\"}" > /dev/null
-        ;;
-    1 ) :
-        ;;
-esac
+dialog --title "github templates" \
+           --yesno "do you want to generate github templates? (for issues, pull requests, etc.)?" 10 50
 
-git remote add origin https://github.com/$user/$repo_name
-git add . > /dev/null
-git commit -m "initial commit" > /dev/null
-git push -u origin master > /dev/null
-
-dialog --title "git" \
-       --msgbox "\n$repo_name was pushed to github" 10 50
+    case $? in
+        0 ) generate_gh_templates
+            ;;
+        1 ) :
+            ;;
+    esac
 
 ######
 # done
 ######
-dialog --title "golf ⛳️" \
-       --msgbox "\nall done!\nthanks for using golf!" 10 50
+dialog --title "golf" \
+       --msgbox "\nall done!\nthanks for playing golf!" 10 50

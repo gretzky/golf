@@ -1,5 +1,5 @@
 
-# Created by https://www.gitignore.io/api/macos,,,
+# Created by https://www.gitignore.io/api/macos
 
 ### macOS ###
 *.DS_Store
@@ -28,7 +28,5 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-#!! ERROR:  is undefined. Use list command to see defined gitignore types !!#
 
-
-# End of https://www.gitignore.io/api/macos,,,
+# End of https://www.gitignore.io/api/macos
