@@ -2,7 +2,7 @@
 
 > the faster way to init a project
 
-![demo](./demo.gif | width=400)
+![demo](./demo.gif)
 
 ## requirements
 
