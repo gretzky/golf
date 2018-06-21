@@ -1,6 +1,8 @@
-# golf
+# golf ⛳️
 
 > the faster way to init a project
+
+![demo](./demo.gif)
 
 ## requirements
 
