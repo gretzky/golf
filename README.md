@@ -23,6 +23,8 @@ $ brew tap gretzky/formulae
 $ brew install golf
 ```
 
+**note:** not fully working
+
 **manually**
 
 ```bash
