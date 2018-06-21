@@ -18,6 +18,11 @@ $ brew install bash dialog jq
 
 **homebrew**
 
+```bash
+$ brew tap gretzky/formulae
+$ brew install golf
+```
+
 **manually**
 
 ```bash
