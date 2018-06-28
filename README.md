@@ -18,14 +18,12 @@ $ brew install bash dialog jq
 
 ## installation
 
-**homebrew**
+**homebrew -- not working atm**
 
 ```bash
 $ brew tap gretzky/formulae
 $ brew install golf
 ```
-
-**note:** not fully working
 
 **manually**
 
