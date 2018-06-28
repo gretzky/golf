@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # golf.sh: a faster way to init a project
 # https://github.com/gretzky/golf
 
