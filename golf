@@ -5,7 +5,7 @@
 VERSION=0.1.3
 
 # set dialog config
-DIALOG=${DIALOG=dialog}
+DIALOG=${DIALOG=dialog --colors}
 GOLF_DIR=/usr/local/bin/golf.sh
 
 # set traps
@@ -62,7 +62,7 @@ while true; do
 done
 
 finish() {
-	echo "\n\nAborting..."
+	printf "\n\nAborting..."
 	if [ -f "$projtemp" ]; then
 		rm -rf $projtemp >/dev/null 2>&1
 	fi
@@ -290,8 +290,7 @@ $DIALOG --title "welcome to golf" \
 	--msgbox "\ngolf is a faster way to init a project\n" 10 50
 
 if [ "$DEFAULTS" == true ]; then
-	$DIALOG --colors \
-		--title "default flag" \
+	$DIALOG --title "default flag" \
 		--msgbox "\nyou're running golf with the \Z5default\Zn flag, which will generate a minimal readme, changelog, gitignore and editorconfig, and the MIT license.\n\nfor more options, run golf with the -h flag\n\npress ENTER to continue or CTRL+C to quit." 15 50
 fi
 
@@ -394,7 +393,7 @@ if [ "$DEFAULTS" = false ] && [ "$MINIMAL" = false ]; then
 fi
 
 $DIALOG --title "golf" \
-	--msgbox "\nall done!\nthanks for playing golf!" 10 50
+	--msgbox "\nall done!\n\n\Z5cd $proj\Zn to check it out\n\nthanks for playing golf!" 10 50
 
 if [ -f "$projtemp" ]; then
 	rm -rf $projtemp >/dev/null 2>&1
