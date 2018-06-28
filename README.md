@@ -46,28 +46,15 @@ you can also uninstall with `make uninstall`
 $ golf
 ```
 
-golf is a dialog program that walks you through all the steps you need to init a new dev project.
+by default, golf outputs a gitignore, editorconfig, license, readme, and github templates (optional)-- all based on your input.
 
-it will:
+**options**
 
-- create a new named project directory
-- generate a basic README
-- configure a .gitignore
-- configure an .editorconfig
-- generate a license file
+`-d | --with-defaults`: will output a generic gitignore, editorconfig, README, and the MIT license
 
-all based on your inputs.
+`-m | --minimal`: outputs only a gitignore and editorconfig
 
-optional:
-
-- generates a changelog
-- generates github templates (bugs, pull request, etc.)
-
-for help:
-
-```bash
-$ man golf
-```
+for help, run golf with the `-h | --help` flag, or `man golf`.
 
 # license
 

@@ -46,7 +46,7 @@ while true; do
 		shift
 		;;
 	-h | --help)
-		echo "Usage: $0 [-d|--with-defaults] [-m|--minimal]\nFor more info run $(man golf)"
+		echo "Usage: $0 [-d|--with-defaults] [-m|--minimal]\nFor more info run 'man golf'"
 		shift
 		;;
 	--) ;;
