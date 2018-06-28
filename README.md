@@ -46,7 +46,7 @@ you can also uninstall with `make uninstall`
 $ golf
 ```
 
-by default, golf outputs a gitignore, editorconfig, license, readme, and github templates (optional)-- all based on your input.
+by default, golf creates your project directory and outputs a gitignore, editorconfig, license, readme, and optional github templates all based on your input.
 
 **options**
 
