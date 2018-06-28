@@ -1,4 +1,4 @@
-SCRIPT = golf.sh
+SCRIPT = golf
 MANPAGE = $(SCRIPT).6
 
 PREFIX = /usr/local
@@ -8,7 +8,7 @@ INSTBIN = $(INSTDIR)/bin
 INSTMAN = $(INSTDIR)/share/man/man6
 
 all:
-	@echo did nothing. try targets: install, or uninstall
+	@echo run \'make instzall\' to install golf
 .PHONY: all
 
 install:

@@ -1,0 +1,410 @@
+#!/bin/sh
+# golf.sh: a faster way to init a project
+# https://github.com/gretzky/golf
+
+VERSION=0.1.3
+
+# set dialog config
+DIALOG=${DIALOG=dialog}
+DIALOGRC=.dialogrc
+
+# set traps
+trap finish SIGINT SIGTERM
+
+# set dialogrc
+rc_exists=
+if [ ! -f $HOME/.dialogrc ]; then
+	rc_exists=false
+	cp .dialogrc $HOME
+else
+	rc_exists=true
+fi
+
+#############
+# set options
+#############
+OPTS=$(getopt -o vhns: --long expedite,help: -n 'parse-options' -- "$@")
+
+if [ $? != 0 ]; then
+	echo "failed to parse options" >&2
+	exit 1
+fi
+
+# set initial flag options
+DEFAULTS=false
+MINIMAL=false
+
+# flags
+while true; do
+	case "$1" in
+	-m | --minimal)
+		MINIMAL=true
+		shift
+		;;
+	-d | --with-defaults)
+		DEFAULTS=true
+		shift
+		;;
+	-h | --help)
+		echo "Usage: $0 [-d|--with-defaults] [-m|--minimal]\nFor more info run $(man golf)"
+		shift
+		;;
+	--) ;;
+	*)
+		if [ -z "$1" ]; then
+			break
+		else
+			echo "$1 isn't a valid option"
+			exit 1
+		fi
+		;;
+	esac
+done
+
+finish() {
+	echo "\n\nAborting..."
+	if [ -f "$projtemp" ]; then
+		rm -rf $projtemp >/dev/null 2>&1
+	fi
+	if [ -f "$idetemp" ]; then
+		rm -rf $idetemp >/dev/null 2>&1
+	fi
+	if [ rc_exists=false ]; then
+		rm -f $HOME/.dialogrc
+	fi
+	sleep 0.5
+	clear
+	exit 1
+}
+
+build_readme() {
+	URL="https://gist.githubusercontent.com/gretzky/19f241a2db9f119853019a40be8d0242/raw/702ce9ec40a51cbf3563047f6ea593a2ff637c4b/readme.md"
+	curl "$URL" -o $proj/README.md >/dev/null 2>&1
+	sleep 1
+	echo "# $proj\n" | cat - $proj/README.md | sponge $proj/README.md
+}
+
+build_gitignore() {
+	lang=""
+	other=""
+	exec 3>&1
+	$DIALOG --title "configure gitignore" \
+		--form "\nAdd gitignore entries\nSeparate multiple entries with commas" \
+		20 50 0 \
+		"Languages:" 1 1 "$lang" 1 20 40 0 \
+		"Frameworks/Other:" 3 1 "$other" 3 20 40 0 \
+		2>&1 1>&3 | {
+		read -r os
+		read -r lang
+		read -r other
+
+		combined="$(echo ${os},${lang},${ide},${other})"
+		output="$(echo "${combined}" | tr -d '[:space:]')"
+
+		curl -L -s "https://www.gitignore.io/api/$output" >/dev/null 2>&1 >>$proj/.gitignore
+	}
+	exec 3>&-
+}
+
+base_editorconfig() {
+	cat >$proj/.editorconfig <<-EOM
+		# editorconfig.org
+		
+		root = true
+		
+		[*]
+		end_of_line = lf
+		insert_final_newline = true
+		charset = utf-8
+		trim_trailing_whitespace = true
+		
+		[*.md]
+		trim_trailing_whitespace = false
+	EOM
+}
+
+build_editorconfig() {
+	lang=""
+	style=""
+	size=""
+	exec 3>&1
+	$DIALOG --title "configure editorconfig" \
+		--form "\nconfigure language-specfic settings:\n" \
+		16 80 0 \
+		"file extension:" 1 1 "$lang" 1 16 80 0 \
+		"spaces or tabs:" 2 1 "$style" 2 16 80 0 \
+		"indent size:" 3 1 "$size" 3 16 80 0 \
+		2>&1 1>&3 | {
+		read -r lang
+		read -r style
+		read -r size
+
+		if [ $(echo "${style: -1}") == "s" ]; then
+			style=$style | rev | cut -c 2- | rev
+		fi
+
+		echo "\n[*.$lang]\nindent_style = ${style}\nindent_size = ${size}" >>$proj/.editorconfig
+	}
+	exec 3>&-
+}
+
+generate_editorconfig() {
+	build_editorconfig
+	$DIALOG --title ".editorconfig" \
+		--yesno "\ndo you need to configure any other language-specific settings?" 10 50
+
+	case $? in
+	0)
+		build_editorconfig
+		;;
+	1)
+		:
+		;;
+	esac
+
+}
+
+get_license() {
+	if ! jq_loc="$(type -p "jq")" || [[ -z $jq_loc ]]; then
+		$DIALOG --msgbox "\nyou need jq to do this.\ndid you read the README fool?" 10 50
+	fi
+	curl -s "https://api.github.com/licenses/$1" | jq -r '.body' >>$proj/LICENSE
+
+	echo "## License\n" >>$proj/README.md
+	echo "[$1](./LICENSE).\n" >>$proj/README.md
+	echo "## Shoutouts\n" >>$proj/README.md
+	echo "* props to ppl or code\n" >>$proj/README.md
+}
+
+generate_license() {
+	cmd=($DIALOG --separate-output --checklist "Select a license:" 16 46 16)
+	options=(1 "MIT" off
+		2 "LGPL-3.0" off
+		3 "AGPL-3.0" off
+		4 "Unlicense" off
+		5 "Apache-2.0" off
+		6 "GPL-3.0" off
+		7 "Other" off)
+	choices=$("${cmd[@]}" "${options[@]}" 2>&1 >/dev/tty)
+	clear
+	for choice in $choices; do
+		case $choice in
+		1)
+			get_license mit
+			;;
+		2)
+			get_license lgpl-3.0
+			;;
+		3)
+			get_license agpl-3.0
+			;;
+		4)
+			get_license unlicense
+			;;
+		5)
+			get_license apache-2.0
+			;;
+		6)
+			get_license gpl-3.0
+			;;
+		7)
+			$DIALOG --msgbox "\ncurrently, golf only grabs the licenses from the Github API(api.github.com/licenses).\n\nopen a PR if you want to show me a better way" 10 50
+			;;
+		esac
+	done
+}
+
+get_bug_report_template() {
+	if [ ! -d $proj/.github ]; then
+		mkdir $proj/.github
+	fi
+
+	URL="https://gist.githubusercontent.com/gretzky/5f856918cb7a91ba71a630625d061715/raw/cb61e5d71dd3377a9cf85925e08dc74e8a15a9d4/bug_report.md"
+	curl "$URL" -o $proj/.github/BUG_REPORT.md >/dev/null 2>&1
+}
+
+get_feature_request_template() {
+	if [ ! -d $proj/.github ]; then
+		mkdir $proj/.github
+	fi
+
+	URL="https://gist.githubusercontent.com/gretzky/06fbb260bdbba18fd5d506b74e6e5bd9/raw/64b8bdf24fdb8b85d302f158b143b27b9466b466/feature_request.md"
+	curl "$URL" -o $proj/.github/FEATURE_REQUEST.md >/dev/null 2>&1
+}
+
+get_pull_request_template() {
+	if [ ! -d $proj/.github ]; then
+		mkdir $proj/.github
+	fi
+
+	URL="https://gist.githubusercontent.com/gretzky/5db53d3a1921f54ffbe07042e7efc3cf/raw/2ac16f2cc8bf9555a9717033122099dcf4c0e6d4/pull_request.md"
+	curl "$URL" -o $proj/.github/PULL_REQUEST_TEMPLATE.md >/dev/null 2>&1
+}
+
+generate_gh_templates() {
+	$DIALOG --title "bug report template" \
+		--yesno "do you want a bug report template?" 10 50
+
+	case $? in
+	0)
+		get_bug_report_template
+		;;
+	1)
+		:
+		;;
+	esac
+
+	$DIALOG --title "feature request template" \
+		--yesno "do you want a feature request template?" 10 50
+
+	case $? in
+	0)
+		get_feature_request_template
+		;;
+	1)
+		:
+		;;
+	esac
+
+	$DIALOG --title "pull request template" \
+		--yesno "do you want a pull request template?" 10 50
+
+	case $? in
+	0)
+		get_pull_request_template
+		;;
+	1)
+		:
+		;;
+	esac
+}
+
+###################################
+# init golf
+###################################
+
+##############
+# welcome msg
+##############
+$DIALOG --title "welcome to golf" \
+	--msgbox "\ngolf is a faster way to init a project\n" 10 50
+
+if [ "$DEFAULTS" == true ]; then
+	$DIALOG --colors \
+		--title "default flag" \
+		--msgbox "\nyou're running golf with the \Z5default\Zn flag, which will generate a minimal readme, changelog, gitignore and editorconfig, and the MIT license.\n\nfor more options, run golf with the -h flag\n\npress ENTER to continue or CTRL+C to quit." 15 50
+fi
+
+if [ "$MINIMAL" == true ]; then
+	$DIALOG --title "minimal flag" \
+		--msgbox "\nyou're running golf with the \Z5minimal\Zn flag, which will generate an editorconfig and gitignore only.\n\nfor more options, run golf with the -h flag\n\npress ENTER to continue or CTRL+C to quit" 12 50
+fi
+
+##############
+# proj details
+##############
+projtemp=$(mktemp -t golftemp.project) || exit
+$DIALOG --title "project details" \
+	--inputbox \
+	"\nenter a name for your project:" 10 50 2>"$projtemp"
+
+retval=$?
+proj=$(cat "$projtemp")
+
+case $retval in
+0)
+	mkdir "$proj"
+	;;
+1)
+	:
+	;;
+esac
+
+# get operating system
+unamestr=$(uname)
+os=""
+if [[ "$unamestr" == 'Darwin' ]]; then
+	os="macos"
+elif [[ "$unamestr" == 'Linux' ]]; then
+	os="linux"
+elif [[ "$unamestr" == 'Windows' ]]; then
+	os="windows"
+fi
+
+# get ide / editor
+idetemp=$(mktemp -t golftemp.ide) || exit
+$DIALOG --title "choose IDE / editor" \
+	--inputbox \
+	"\nenter the name of your text editor / IDE:" 10 50 2>"$idetemp"
+
+retval=$?
+ide=$(cat "$idetemp")
+
+case $retval in
+0)
+	:
+	;;
+1)
+	:
+	;;
+esac
+
+# generate readme
+build_readme >/dev/null 2>&1
+
+# generate gitignore
+if [ "$DEFAULTS" = true ] || [ "$MINIMAL" = true ]; then
+	combined="$(echo ${os},${ide})"
+	output="$(echo "${combined}" | tr -d '[:space:]')"
+
+	curl -L -s "https://www.gitignore.io/api/$output" >/dev/null 2>&1 >>$proj/.gitignore
+else
+	build_gitignore
+fi
+
+# generate editorconfig
+if [ "$DEFAULTS" = true ] || [ "$MINIMAL" = true ]; then
+	base_editorconfig
+else
+	generate_editorconfig
+fi
+
+# generate license
+if [ "$DEFAULTS" = true ]; then
+	get_license mit
+elif [ "$MINIMAL" = true ]; then
+	:
+else
+	generate_license
+fi
+
+# generate github templates
+if [ "$DEFAULTS" = false ] && [ "$MINIMAL" = false ]; then
+	$DIALOG --title "github templates" \
+		--yesno "do you want to generate github templates? (for issues, pull requests, etc.)?" 10 50
+
+	case $? in
+	0)
+		generate_gh_templates
+		;;
+	1)
+		:
+		;;
+	esac
+fi
+
+$DIALOG --title "golf" \
+	--msgbox "\nall done!\nthanks for playing golf!" 10 50
+
+if [ -f "$projtemp" ]; then
+	rm -rf $projtemp >/dev/null 2>&1
+fi
+if [ -f "$idetemp" ]; then
+	rm -rf $idetemp >/dev/null 2>&1
+fi
+if [ rc_exists=false ]; then
+	rm -f $HOME/.dialogrc
+fi
+sleep 0.5
+clear
+exit 0

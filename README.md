@@ -44,6 +44,10 @@ you can also uninstall with `make uninstall`
 
 ## usage
 
+```bash
+$ golf
+```
+
 golf is a dialog program that walks you through all the steps you need to init a new dev project.
 
 it will:
@@ -64,7 +68,7 @@ optional:
 for help:
 
 ```bash
-man golf.sh
+$ man golf
 ```
 
 # license
