@@ -56,6 +56,8 @@ by default, golf creates your project directory and outputs a gitignore, editorc
 
 for help, run golf with the `-h | --help` flag, or `man golf`.
 
-# license
+**looking for something nodejs specific? check out [golf.js](https://github.com/gretzky/golf.js)**
+
+## license
 
 [MIT](./LICENSE)
