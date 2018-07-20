@@ -172,8 +172,8 @@ get_license() {
 
 	printf "## License\n" >>$proj/README.md
 	printf "[${1^^}](./LICENSE).\n" >>$proj/README.md
-	printf "## Shoutouts\n" >>$proj/README.md
-	printf "* props to ppl or code\n" >>$proj/README.md
+	printf "\n---\n" >>$proj/README.md
+	printf "init'd with [golf](https://github.com/gretzky/golf)" >>$proj/README.md
 }
 
 generate_license() {
